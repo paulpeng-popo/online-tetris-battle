@@ -5,8 +5,8 @@ pygame.init()
 pygame.mixer.init()
 pygame.font.init()
 
-s_width = 800
-s_height = 700
+s_width = 900
+s_height = 800
 play_width = 300  # meaning 300 // 10 = 30 width per block
 play_height = 600  # meaning 600 // 20 = 30 height per block
 block_size = 30
@@ -48,7 +48,7 @@ I = [['..0..',
       '.....',
       '.....']]
 
-O = [['.....',
+Q = [['.....',
       '.....',
       '.00..',
       '.00..',
@@ -123,7 +123,7 @@ N = [['.....',
       '.....',
       '.....']]
 
-shapes = [I, Z, S, J, L, T, O]
+shapes = [I, Z, S, J, L, T, Q]
 shape_colors = [
     (0, 191, 255), # LightSkyBlue
     (255, 48, 48), # Firebrick1
@@ -139,7 +139,7 @@ class Piece(object):
     def __init__(self, x, y, shape):
         self.x = x
         self.y = y
-        self.shape = shape # one of 2d list from I, Z, S, J, L, T, O
+        self.shape = shape # one of 2d list from I, Z, S, J, L, T, Q
         if shape != N: self.color = shape_colors[shapes.index(shape)]
         else: self.color = (0, 0, 0)
         self.rotation = 0
@@ -184,17 +184,33 @@ def convert_shape_format(shape):
     return positions
 
 
-def valid_space(shape, grid):
+def valid_space(shape, grid, spin=False):
     accepted_pos = [[(j, i) for j in range(10) if grid[i][j] == (0,0,0)] for i in range(20)]
     accepted_pos = [j for sub in accepted_pos for j in sub]
 
-    formatted = convert_shape_format(shape)
+    if spin and shape.y > -1:
+        test_pos = [(0,0), (1,0), (-1,0), (2, 0), (-2, 0), (1,1), (-1,1), (1, 2), (-1, 2)]
+        reset_pos = [(0,0), (-1,0), (1,0), (-2, 0), (2, 0), (-1,-1), (1,-1), (-1, -2), (1, -2)]
 
-    for pos in formatted:
-        if pos not in accepted_pos:
-            if pos[1] > -1 or pos[0] < 0 or pos[0] > 9:
-                return False
-    return True
+        for test_i in range(len(test_pos)):
+            shape.x += test_pos[test_i][0]
+            shape.y += test_pos[test_i][1]
+            formatted = convert_shape_format(shape)
+
+            if all(pos in accepted_pos for pos in formatted):
+                return True
+
+            shape.x += reset_pos[test_i][0]
+            shape.y += reset_pos[test_i][1]
+
+        return False
+    else:
+        formatted = convert_shape_format(shape)
+        for pos in formatted:
+            if pos not in accepted_pos:
+                if pos[1] > -1 or pos[0] < 0 or pos[0] > 9:
+                    return False
+        return True
 
 
 def check_lost(positions):
@@ -206,28 +222,36 @@ def check_lost(positions):
     return False
 
 
-def get_shape(args=""):
+def get_shape(shapes_box, args=""):
 
     if args == "empty":
         return Piece(5, 0, N)
 
+    shape = random.choice(shapes_box)
+    shapes_box.remove(shape)
+
     # start point at (5, 0)
-    return Piece(5, 0, random.choice(shapes))
+    return Piece(5, 0, shape)
 
 
-def draw_text_middle(surface, text, size, color):
+def draw_text_middle(surface, text, size, color, score=-1):
 
-    s = pygame.Surface(surface.get_size())
-    s.set_alpha(128)
-    s.fill((255, 105, 180))
-    surface.blit(s, (0,0))
+    if text != "遊戲結束": pass
+    else: surface.fill((255, 105, 180))
 
     font_path = pygame.font.match_font("dfkaisb")
     font = pygame.font.Font(font_path, size, bold=True)
     label = font.render(text, 1, color)
 
     surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
-                         top_left_y + play_height/2 - (label.get_height()/2)))
+                         top_left_y + play_height/2 - (label.get_height()/2) - 50))
+
+    if score == -1: pass
+    else:
+        label = font.render("積分行數: "+str(score), 1, color)
+
+        surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
+                             top_left_y + play_height/2 - (label.get_height()/2) + 50))
 
 
 def draw_grid(surface, grid):
@@ -243,11 +267,13 @@ def draw_grid(surface, grid):
 def clear_rows(grid, locked):
 
     inc = 0 # num of eliminated rows
+    ind_list = []  # the eliminated rows
+
     for i in range(len(grid)-1, -1, -1):
         row = grid[i]
         if (0,0,0) not in row:
             inc += 1
-            ind = i
+            ind_list.append(i)
             for j in range(len(row)):
                 try:
                     del locked[(j,i)]
@@ -255,33 +281,59 @@ def clear_rows(grid, locked):
                     continue
 
     if inc > 0:
-        for key in sorted(list(locked), key=lambda x: x[1])[::-1]:
-            x, y = key
-            if y < ind: # the bottommost eliminated row
-                newKey = (x, y + inc)
-                locked[newKey] = locked.pop(key) # move down row blocks to remove blank row
+
+        bias = 0
+        temp = inc
+        while temp > 0:
+            gap = ind_list[bias]-ind_list[-1]+1-temp
+            if gap == 0: break
+            bias += 1
+            temp -= 1
+
+        ind_count = [bias, temp]
+        # [0, 1], [0, 2], [0, 3], [0, 4], [1, 1], [1, 2], [2, 1]
+
+        sorted_locked = sorted(list(locked), key=lambda x: x[1])
+
+        if ind_count[0] == 0:
+            for key in sorted_locked[::-1]:
+                x, y = key
+                if y < ind_list[-1]:
+                    newKey = (x, y + ind_count[1])
+                    locked[newKey] = locked.pop(key)
+        else:
+            for key in sorted_locked[::-1]:
+                x, y = key
+                if y < ind_list[0] and y > ind_list[-1]:
+                    newKey = (x, y + ind_count[0])
+                    locked[newKey] = locked.pop(key)
+                elif y < ind_list[-1]:
+                    newKey = (x, y + ind_count[0] + ind_count[1])
+                    locked[newKey] = locked.pop(key)
 
     return inc
 
 
-def draw_next_shape(shape, surface):
+def draw_next_shape(shapes, surface):
     font_path = pygame.font.match_font("dfkaisb")
     font = pygame.font.Font(font_path, 30)
-    label = font.render('下一個', 1, (255,255,255))
+    label = font.render("下一個", 1, (255,255,255))
 
-    sx = top_left_x + play_width + 50
-    sy = top_left_y + 100
-    format = shape.shape[shape.rotation % len(shape.shape)]
-
-    for i, line in enumerate(format):
-        row = list(line)
-        pygame.draw.line(surface, (119, 136, 153), (sx, sy+i*block_size), (sx+4*block_size, sy+i*block_size), 2)
-        for j, column in enumerate(row):
-            pygame.draw.line(surface, (119, 136, 153), (sx+j*block_size, sy),(sx+j*block_size, sy+4*block_size), 2)
-            if column == '0':
-                pygame.draw.rect(surface, shape.color, (sx+j*block_size, sy+i*block_size, block_size, block_size-2), 0)
+    sx = top_left_x + play_width + 100
+    sy = top_left_y - 10
 
     surface.blit(label, (sx + 10, sy - 50))
+
+    for shape in shapes:
+        format = shape.shape[shape.rotation % len(shape.shape)]
+        for i, line in enumerate(format):
+            row = list(line)
+            pygame.draw.line(surface, (119, 136, 153), (sx, sy+i*block_size), (sx+4*block_size, sy+i*block_size), 2)
+            for j, column in enumerate(row):
+                pygame.draw.line(surface, (119, 136, 153), (sx+j*block_size, sy),(sx+j*block_size, sy+4*block_size), 2)
+                if column == "0":
+                    pygame.draw.rect(surface, shape.color, (sx+j*block_size, sy+i*block_size, block_size, block_size-2), 0)
+        sy += 140
 
 
 def draw_hold_shape(shape, surface):
@@ -289,8 +341,8 @@ def draw_hold_shape(shape, surface):
     font = pygame.font.Font(font_path, 30)
     label = font.render("替換", 1, (255,255,255))
 
-    sx = top_left_x + play_width + 50
-    sy = top_left_y + 400
+    sx = top_left_x - 200
+    sy = top_left_y + 500
     format = shape.shape[shape.rotation % len(shape.shape)]
 
     for i, line in enumerate(format):
@@ -298,7 +350,7 @@ def draw_hold_shape(shape, surface):
         pygame.draw.line(surface, (119, 136, 153), (sx, sy+i*block_size), (sx+4*block_size, sy+i*block_size), 2)
         for j, column in enumerate(row):
             pygame.draw.line(surface, (119, 136, 153), (sx+j*block_size, sy),(sx+j*block_size, sy+4*block_size), 2)
-            if column == '0':
+            if column == "0":
                 pygame.draw.rect(surface, shape.color, (sx+j*block_size, sy+i*block_size, block_size, block_size-2), 0)
 
     surface.blit(label, (sx + 20, sy - 50))
@@ -325,24 +377,65 @@ def max_score():
         return "0"
 
 
-def draw_window(surface, grid, score=0, last_score=0):
+def draw_window(surface, grid, tetris, combo, mini, tspin, b2b, score=0, last_score=0, seconds=120):
 
     surface.fill((100, 100, 100))
     font_path = pygame.font.match_font("dfkaisb")
     font = pygame.font.Font(font_path, 30)
 
     # last score
-    label = font.render('High Score: ' + last_score, 1, (255,255,255))
+    label = font.render("最高成績: " + last_score, 1, (255, 255, 255))
 
     sx = top_left_x // 2 - (label.get_width()/2)
     sy = top_left_y // 2 + 30
     surface.blit(label, (sx, sy))
 
     # current score
-    label = font.render('Score: ' + str(score), 1, (255,255,255))
+    label = font.render("積分行數: " + str(score), 1, (255, 255, 255))
 
     sy += 60
     surface.blit(label, (sx, sy))
+
+    # timer
+    font = pygame.font.Font(font_path, 40)
+    label = font.render('剩餘 ' + str(int(seconds//60)) + ":" + str(int(seconds%60)), 3, (255, 255, 255))
+
+    sy += 60
+    surface.blit(label, (sx, sy))
+
+    # tetris
+    if tetris:
+        font = pygame.font.Font(font_path, 20)
+        label = font.render("Tetris", 3, (255, 255, 255))
+        sy += 60
+        surface.blit(label, (sx, sy))
+
+    # combo
+    if combo:
+        label = font.render("Combo x" + str(combo), 3, (255, 255, 255))
+        sy += 60
+        surface.blit(label, (sx, sy))
+
+    # mini
+    if mini:
+        label = font.render("Mini T-Spin", 3, (255, 255, 255))
+        sy += 60
+        surface.blit(label, (sx, sy))
+
+    # tspin
+    elif tspin:
+        if rows == 1: text = "Single"
+        elif rows == 2: text = "Double"
+        elif rows == 3: text = "Triple"
+        label = font.render("T-Spin " + text, 3, (255, 255, 255))
+        sy += 60
+        surface.blit(label, (sx, sy))
+
+    # b2b
+    if b2b:
+        label = font.render("Back-to-back", 3, (255, 255, 255))
+        sy += 60
+        surface.blit(label, (sx, sy))
 
     for i in range(len(grid)):
         for j in range(len(grid[i])):
@@ -351,6 +444,12 @@ def draw_window(surface, grid, score=0, last_score=0):
     pygame.draw.rect(surface, (0, 255, 255), (top_left_x, top_left_y, play_width, play_height), 3)
 
     draw_grid(surface, grid)
+
+    if seconds <= 10:
+        draw_text_middle(surface, str(int(seconds)), 80, (255, 105, 180))
+        if int(seconds) <= 0: return True
+
+    return False
 
 
 def get_project(grid, shape_pos):
