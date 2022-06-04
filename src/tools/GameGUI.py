@@ -1,22 +1,82 @@
-from MainGame import *
+from tools.GameFunctions import *
+from tools.Connect import ConnectServer
 import pygame
-import random
 
 pygame.init()
 pygame.mixer.init()
 pygame.font.init()
 
-# s_width = 900
-# s_height = 800
-# play_width = 300  # meaning 300 // 10 = 30 width per block
-# play_height = 600  # meaning 600 // 20 = 30 height per block
-# block_size = 30
-#
-# top_left_x = (s_width - play_width) // 2
-# top_left_y = (s_height - play_height) // 2
+arrowPNG = { "path": "images/key_arrow.png", "size": (450, 300), "left_loc": (100, 100) }
+keyzPNG = { "path": "images/key_z.png", "size": (150, 150), "left_loc": (650, 80) }
+keycPNG = { "path": "images/key_c.png", "size": (150, 150), "left_loc": (650, 250) }
+keymPNG = { "path": "images/key_m.png", "size": (150, 150), "left_loc": (650, 420) }
+keypPNG = { "path": "images/key_p.png", "size": (150, 150), "left_loc": (650, 590) }
+spacebarPNG = { "path": "images/space_bar.png", "size": (450, 150), "left_loc": (100, 500) }
 
 
-def main(win):
+def tutorial(win):
+
+    run = True
+
+    arrow = pygame.image.load(arrowPNG["path"])
+    arrow = pygame.transform.scale(arrow, arrowPNG["size"])
+    arrow_rect = arrow.get_rect()
+    arrow_rect.topleft = arrowPNG["left_loc"]
+    
+    keyz = pygame.image.load(keyzPNG["path"])
+    keyz = pygame.transform.scale(keyz, keyzPNG["size"])
+    keyz_rect = keyz.get_rect()
+    keyz_rect.topleft = keyzPNG["left_loc"]
+
+    keyc = pygame.image.load(keycPNG["path"])
+    keyc = pygame.transform.scale(keyc, keycPNG["size"])
+    keyc_rect = keyc.get_rect()
+    keyc_rect.topleft = keycPNG["left_loc"]
+
+    keym = pygame.image.load(keymPNG["path"])
+    keym = pygame.transform.scale(keym, keymPNG["size"])
+    keym_rect = keym.get_rect()
+    keym_rect.topleft = keymPNG["left_loc"]
+
+    keyp = pygame.image.load(keypPNG["path"])
+    keyp = pygame.transform.scale(keyp, keypPNG["size"])
+    keyp_rect = keyp.get_rect()
+    keyp_rect.topleft = keypPNG["left_loc"]
+
+    spacebar = pygame.image.load(spacebarPNG["path"])
+    spacebar = pygame.transform.scale(spacebar, spacebarPNG["size"])
+    spacebar_rect = spacebar.get_rect()
+    spacebar_rect.topleft = spacebarPNG["left_loc"]
+
+    canvas = pygame.Surface(win.get_size())
+    canvas = canvas.convert()
+
+    start_ticks = pygame.time.get_ticks()
+
+    while run:
+
+        seconds = (pygame.time.get_ticks()-start_ticks)/1000
+
+        event_list = pygame.event.get()
+        for event in event_list:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                run = False
+
+        if seconds >= 5: run = False
+
+        canvas.blit(arrow, arrow_rect)
+        canvas.blit(keyz, keyz_rect)
+        canvas.blit(keyc, keyc_rect)
+        canvas.blit(keym, keym_rect)
+        canvas.blit(keyp, keyp_rect)
+        canvas.blit(spacebar, spacebar_rect)
+        
+        win.blit(canvas, (0,0))
+        canvas.fill((128, 128, 128))
+        pygame.display.flip()
+
+
+def Single(win):
 
     tutorial(win)
 
@@ -24,7 +84,7 @@ def main(win):
     locked_positions = {}
     grid = create_grid(locked_positions)
     shapes_box = [I, Z, S, J, L, T, Q]
-    down_sound = pygame.mixer.Sound("music/descend.mp3")
+    down_sound = pygame.mixer.Sound("./musics/descend.mp3")
 
     run = True
     pause = False
@@ -112,7 +172,7 @@ def main(win):
                     if down_sound:
                         down_sound = None
                     else:
-                        down_sound = pygame.mixer.Sound("music/descend.mp3")
+                        down_sound = pygame.mixer.Sound("./musics/descend.mp3")
                 elif event.key == pygame.K_c:
                     if replace_lock: pass
                     else:
@@ -234,8 +294,8 @@ def main(win):
 
             run = False
             update_score(score)
-
-
+            
+            
 def cal_score(isTSpin, rows, combo, b2b, mini):
 
     general = 0
@@ -256,89 +316,42 @@ def cal_score(isTSpin, rows, combo, b2b, mini):
     else: bouns = (combo-1)//2+1
 
     return (general + bouns, b2b)
-
-
-def tutorial(win):
-
+            
+            
+def Multiple(win):
+    
+    talk = ConnectServer()
+    talk.run()
+    talk.close()
+    
     run = True
+    
+    musics_data = []
+    for (dirpath, dirnames, filenames) in walk("./musics"):
+    
+        try: filenames.remove("descend.mp3")
+        except: pass
+        
+        musics_data.extend(filenames)
+        break
+        
+    for song in musics_data:
+        gameBGM[song[:-4]] = { "path": "./musics/"+song, "volume": 0.7 }
 
-    arrow = pygame.image.load("images/key_arrow.png")
-    arrow = pygame.transform.scale(arrow, (450, 300))
-    arrow_rect = arrow.get_rect()
-
-    keyp = pygame.image.load("images/key_p.png")
-    keyp = pygame.transform.scale(keyp, (150, 150))
-    keyp_rect = keyp.get_rect()
-
-    keyz = pygame.image.load("images/key_z.png")
-    keyz = pygame.transform.scale(keyz, (150, 150))
-    keyz_rect = keyz.get_rect()
-
-    keym = pygame.image.load("images/key_m.png")
-    keym = pygame.transform.scale(keym, (150, 150))
-    keym_rect = keym.get_rect()
-
-    keyc = pygame.image.load("images/key_c.png")
-    keyc = pygame.transform.scale(keyc, (150, 150))
-    keyc_rect = keyc.get_rect()
-
-    space = pygame.image.load("images/space_bar.png")
-    space = pygame.transform.scale(space, (450, 150))
-    space_rect = space.get_rect()
-
-    canvas = pygame.Surface(win.get_size())
-    canvas = canvas.convert()
-
-    arrow_rect.topleft = (100, 100)
-    keyp_rect.topleft = (650, 80)
-    keyz_rect.topleft = (650, 250)
-    keyc_rect.topleft = (650, 420)
-    keym_rect.topleft = (650, 590)
-    space_rect.topleft = (100, 500)
-
-    start_ticks = pygame.time.get_ticks()
-
-    while run:
-
-        seconds = (pygame.time.get_ticks()-start_ticks)/1000
-
-        event_list = pygame.event.get()
-        for event in event_list:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                run = False
-
-        if seconds >= 5: run = False
-
-        canvas.blit(arrow, arrow_rect)
-        canvas.blit(keyp, keyp_rect)
-        canvas.blit(keyz, keyz_rect)
-        canvas.blit(keyc, keyc_rect)
-        canvas.blit(keym, keym_rect)
-        canvas.blit(space, space_rect)
-        win.blit(canvas, (0,0))
-        canvas.fill((128, 128, 128))
-        pygame.display.flip()
-
-
-def change_music(win):
-
-    run = True
-    music_data = ["Vocaloid.mp3", "Rise.mp3", "Polonaise.mp3", "Ashes.mp3"]
-
-    def back_to(args):
+    def back_to_home(args):
         nonlocal run
         run = False
 
-    title = pygame.image.load("images/title.png")
-    title = pygame.transform.scale(title, (600, 800))
+    title = pygame.image.load(titlePNG["path"])
+    title = pygame.transform.scale(title, titlePNG["size"])
     title_rect = title.get_rect()
 
     canvas = pygame.Surface(win.get_size())
     canvas = canvas.convert()
 
-    back = A_Button(canvas, "Return", back_to, 650, 600, 200, 80)
-    music_list = DropDown(
-        "Vocaloid", ["Vocaloid", "Rise", "Polonaise", "Ashes"],
+    back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
+    musics_list = DropDown(
+        "vocaloid", list(gameBGM.keys()),
         650, 100, 200, 80
     )
 
@@ -355,16 +368,18 @@ def change_music(win):
                 back.on_click(event, win)
 
         back.update(pygame.event.get())
-        selected_option = music_list.update(event_list)
+        selected_option = musics_list.update(event_list)
+        
         if selected_option >= 0:
-            music_list.main = music_list.options[selected_option]
+        
+            musics_list.main = musics_list.options[selected_option]
             pygame.mixer.music.stop()
-            pygame.mixer.music.load("music/"+music_data[selected_option])
-            pygame.mixer.music.set_volume(0.7)
+            pygame.mixer.music.load(gameBGM[musics_list.main]["path"])
+            pygame.mixer.music.set_volume(gameBGM[musics_list.main]["volume"])
             pygame.mixer.music.play(-1)
 
         canvas.fill((128,128,128))
-        music_list.draw(canvas)
+        musics_list.draw(canvas)
         back.draw_button()
         pygame.display.flip()
 
@@ -372,6 +387,7 @@ def change_music(win):
 class A_Button():
 
     def __init__(self, screen, text, callback, x=0, y=0, w=200, h=80):
+    
         self.canvas = screen
         self.text = text
         self.button = {}
@@ -384,14 +400,17 @@ class A_Button():
         self.draw_button()
 
     def draw_button(self):
+    
         if self.button == {}:
             print("You should create button first!")
             return
+        
         pygame.draw.rect(self.canvas, self.button['color'], self.button['rect'])
         self.canvas.blit(self.button['text'], self.button['text rect'])
         pygame.display.update()
 
     def create_button(self):
+    
         font_path = pygame.font.match_font("times")
         font = pygame.font.Font(font_path, 40)
         text_surf = font.render(self.text, True, (0, 0, 0))
@@ -406,11 +425,12 @@ class A_Button():
         }
 
     def on_click(self, event, args):
-        if event.button == 1:
-            if self.button['rect'].collidepoint(event.pos):
-                self.callback(args)
+    
+        if event.button == 1 and self.button['rect'].collidepoint(event.pos):
+            self.callback(args)
 
     def update(self, event_list):
+    
         mpos = pygame.mouse.get_pos()
         self.active = self.button['rect'].collidepoint(mpos)
 
@@ -418,8 +438,10 @@ class A_Button():
         else: self.button['color'] = (238, 221, 130)
 
 
-class IMG_Button:
+class IMG_Button():
+
     def __init__(self, image, click_image, position):
+    
         self.image = image
         self.rect = self.image.get_rect(topleft=position)
         self.click_image = click_image
@@ -427,11 +449,12 @@ class IMG_Button:
         self.type = True
 
     def on_click(self, event):
-        if event.button == 1:
-            if self.rect.collidepoint(event.pos):
-                self.change_type()
+    
+        if event.button == 1 and self.rect.collidepoint(event.pos):
+            self.change_type()
 
     def change_type(self):
+    
         self.temp = self.image
         self.image = self.click_image
         self.click_image = self.temp
@@ -445,6 +468,7 @@ class IMG_Button:
 class DropDown():
 
     def __init__(self, main, options, x=0, y=0, w=200, h=80):
+    
         font_path = pygame.font.match_font("times")
         self.font = pygame.font.Font(font_path, 40)
 
@@ -458,12 +482,15 @@ class DropDown():
         self.active_option = -1
 
     def draw(self, surf):
+    
         pygame.draw.rect(surf, self.color_menu[self.menu_active], self.rect, 0)
         msg = self.font.render(self.main, 1, (0, 0, 0))
         surf.blit(msg, msg.get_rect(center = self.rect.center))
 
         if self.draw_menu:
+        
             for i, text in enumerate(self.options):
+            
                 rect = self.rect.copy()
                 rect.y += (i+1) * self.rect.height
                 pygame.draw.rect(surf, self.color_option[1 if i == self.active_option else 0], rect, 0)
@@ -471,6 +498,7 @@ class DropDown():
                 surf.blit(msg, msg.get_rect(center = rect.center))
 
     def update(self, event_list):
+    
         mpos = pygame.mouse.get_pos()
         self.menu_active = self.rect.collidepoint(mpos)
 
@@ -494,77 +522,3 @@ class DropDown():
                     return self.active_option
         return -1
 
-
-def main_menu(win):
-
-    clock = pygame.time.Clock()
-    run = True
-
-    title = pygame.image.load("images/title.png")
-    title = pygame.transform.scale(title, (600, 800))
-    title_rect = title.get_rect()
-
-    sound = pygame.image.load("images/sound.png")
-    sound = pygame.transform.scale(sound, (100, 100))
-
-    mute = pygame.image.load("images/mute.png")
-    mute = pygame.transform.scale(mute, (100, 100))
-
-    canvas = pygame.Surface(win.get_size())
-    canvas = canvas.convert()
-
-    def quit_game(args):
-        nonlocal run
-        run = False
-
-    def music_state(args):
-        nonlocal run
-        run = False
-
-    single = A_Button(canvas, "Practice", main, 650, 150, 200, 80)
-    online = A_Button(canvas, "Online", quit_game, 650, 250, 200, 80)
-    quit = A_Button(canvas, "Quit", quit_game, 650, 350, 200, 80)
-    music = A_Button(canvas, "Edit Music", change_music, 650, 450, 200, 80)
-    buttons = [ single, online, quit, music ]
-
-    ibutton = IMG_Button(sound, mute, (700, 650))
-
-    while run:
-
-        canvas.fill((128,128,128))
-        canvas.blit(title, title_rect)
-        canvas.blit(ibutton.image, ibutton.rect)
-
-        for button in buttons:
-            button.draw_button()
-
-        win.blit(canvas, (0, 0))
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                run = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                ibutton.on_click(event)
-                for button in buttons:
-                    button.on_click(event, win)
-
-        for button in buttons:
-            button.update(pygame.event.get())
-        pygame.display.update()
-        clock.tick(30)
-
-    pygame.display.quit()
-
-
-win = pygame.display.set_mode((s_width, s_height))
-
-programIcon = pygame.image.load("images/title.png")
-pygame.display.set_icon(programIcon)
-pygame.display.set_caption("Online Tetris Battle")
-
-pygame.mixer.music.load("music/vocaloid.mp3")
-pygame.mixer.music.set_volume(0.5)
-pygame.mixer.music.play(-1)
-
-main_menu(win)

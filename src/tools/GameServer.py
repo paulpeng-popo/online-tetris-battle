@@ -24,7 +24,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 def connect():
     HOST = socket.gethostname()
     PORT = 18642
-    server = ThreadedTCPServer(("127.0.0.1", PORT), ThreadedTCPRequestHandler)
+    server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
     server_thread = threading.Thread(target=server.serve_forever)
     server_thread.start()
     print('Server is starting up...')

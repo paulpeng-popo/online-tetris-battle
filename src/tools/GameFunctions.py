@@ -359,7 +359,7 @@ def draw_hold_shape(shape, surface):
 def update_score(nscore):
 
     score = max_score()
-    with open("scores.txt", "w") as f:
+    with open("score.txt", "w") as f:
         if int(score) > nscore:
             f.write(str(score))
         else:
@@ -369,7 +369,7 @@ def update_score(nscore):
 def max_score():
 
     try:
-        with open("scores.txt", "r") as f:
+        with open("score.txt", "r") as f:
             lines = f.readlines()
             score = lines[0].strip()
         return score
