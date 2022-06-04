@@ -1,3 +1,9 @@
+<<<<<<< HEAD
 .DS_Store
 score.txt
 __pycache__
+=======
+__pycache__/
+.DS_Store
+score.txt
+>>>>>>> 91e69bedb071cf657ce91d4c3f207673fc078d00
