@@ -136,9 +136,9 @@ def main(win):
                     surf.fill((255, 105, 180))
                     win.blit(surf, (0,0))
 
-                    font_path = pygame.font.match_font("dfkaisb")
+                    font_path = pygame.font.match_font("times")
                     font = pygame.font.Font(font_path, 80, bold=True)
-                    label = font.render("暫停", 1, (255,255,255))
+                    label = font.render("Pause", 1, (255,255,255))
 
                     win.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
                                          top_left_y + play_height/2 - (label.get_height()/2)))
@@ -228,7 +228,7 @@ def main(win):
             fall_speed *= 0.995
 
         if check_lost(locked_positions) or timeup:
-            draw_text_middle(win, "遊戲結束", 80, (255,255,255), score)
+            draw_text_middle(win, "Gme Over", 80, (255,255,255), score)
             pygame.display.update()
             pygame.time.delay(2000)
 
@@ -341,7 +341,7 @@ def change_music(win):
     canvas = pygame.Surface(win.get_size())
     canvas = canvas.convert()
 
-    back = A_Button(canvas, "返回", back_to, 650, 600, 200, 80)
+    back = A_Button(canvas, "Return", back_to, 650, 600, 200, 80)
     music_list = DropDown(
         "Vocaloid", ["Vocaloid", "Rise", "Polonaise", "Ashes"],
         650, 100, 200, 80
@@ -397,7 +397,7 @@ class A_Button():
         pygame.display.update()
 
     def create_button(self):
-        font_path = pygame.font.match_font("dfkaisb")
+        font_path = pygame.font.match_font("times")
         font = pygame.font.Font(font_path, 40)
         text_surf = font.render(self.text, True, (0, 0, 0))
         button_rect = pygame.Rect(self.x, self.y, self.w, self.h)
@@ -450,7 +450,7 @@ class IMG_Button:
 class DropDown():
 
     def __init__(self, main, options, x=0, y=0, w=200, h=80):
-        font_path = pygame.font.match_font("dfkaisb")
+        font_path = pygame.font.match_font("times")
         self.font = pygame.font.Font(font_path, 40)
 
         self.color_menu = [ (238, 221, 130), (255, 215, 0) ]
@@ -526,10 +526,10 @@ def main_menu(win):
         nonlocal run
         run = False
 
-    single = A_Button(canvas, "練習模式", main, 650, 150, 200, 80)
-    online = A_Button(canvas, "線上對戰", quit_game, 650, 250, 200, 80)
-    quit = A_Button(canvas, "離開遊戲", quit_game, 650, 350, 200, 80)
-    music = A_Button(canvas, "更改音樂", change_music, 650, 450, 200, 80)
+    single = A_Button(canvas, "Practice", main, 650, 150, 200, 80)
+    online = A_Button(canvas, "Online", quit_game, 650, 250, 200, 80)
+    quit = A_Button(canvas, "Quit", quit_game, 650, 350, 200, 80)
+    music = A_Button(canvas, "Edit Music", change_music, 650, 450, 200, 80)
     buttons = [ single, online, quit, music ]
 
     ibutton = IMG_Button(sound, mute, (700, 650))

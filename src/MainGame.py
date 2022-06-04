@@ -236,10 +236,10 @@ def get_shape(shapes_box, args=""):
 
 def draw_text_middle(surface, text, size, color, score=-1):
 
-    if text != "遊戲結束": pass
+    if text != "Game Over": pass
     else: surface.fill((255, 105, 180))
 
-    font_path = pygame.font.match_font("dfkaisb")
+    font_path = pygame.font.match_font("times")
     font = pygame.font.Font(font_path, size, bold=True)
     label = font.render(text, 1, color)
 
@@ -248,7 +248,7 @@ def draw_text_middle(surface, text, size, color, score=-1):
 
     if score == -1: pass
     else:
-        label = font.render("積分行數: "+str(score), 1, color)
+        label = font.render("Lines sent: "+str(score), 1, color)
 
         surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
                              top_left_y + play_height/2 - (label.get_height()/2) + 50))
@@ -315,9 +315,9 @@ def clear_rows(grid, locked):
 
 
 def draw_next_shape(shapes, surface):
-    font_path = pygame.font.match_font("dfkaisb")
+    font_path = pygame.font.match_font("times")
     font = pygame.font.Font(font_path, 30)
-    label = font.render("下一個", 1, (255,255,255))
+    label = font.render("Next", 1, (255,255,255))
 
     sx = top_left_x + play_width + 100
     sy = top_left_y - 10
@@ -337,9 +337,9 @@ def draw_next_shape(shapes, surface):
 
 
 def draw_hold_shape(shape, surface):
-    font_path = pygame.font.match_font("dfkaisb")
+    font_path = pygame.font.match_font("times")
     font = pygame.font.Font(font_path, 30)
-    label = font.render("替換", 1, (255,255,255))
+    label = font.render("Hold", 1, (255,255,255))
 
     sx = top_left_x - 200
     sy = top_left_y + 500
@@ -359,7 +359,7 @@ def draw_hold_shape(shape, surface):
 def update_score(nscore):
 
     score = max_score()
-    with open('scores.txt', 'w') as f:
+    with open("scores.txt", "w") as f:
         if int(score) > nscore:
             f.write(str(score))
         else:
@@ -369,7 +369,7 @@ def update_score(nscore):
 def max_score():
 
     try:
-        with open('scores.txt', 'r') as f:
+        with open("scores.txt", "r") as f:
             lines = f.readlines()
             score = lines[0].strip()
         return score
@@ -380,25 +380,25 @@ def max_score():
 def draw_window(surface, grid, tetris, combo, mini, tspin, b2b, score=0, last_score=0, seconds=120):
 
     surface.fill((100, 100, 100))
-    font_path = pygame.font.match_font("dfkaisb")
+    font_path = pygame.font.match_font("times")
     font = pygame.font.Font(font_path, 30)
 
     # last score
-    label = font.render("最高成績: " + last_score, 1, (255, 255, 255))
+    label = font.render("Record: " + last_score, 1, (255, 255, 255))
 
     sx = top_left_x // 2 - (label.get_width()/2)
     sy = top_left_y // 2 + 30
     surface.blit(label, (sx, sy))
 
     # current score
-    label = font.render("積分行數: " + str(score), 1, (255, 255, 255))
+    label = font.render("Lines sent: " + str(score), 1, (255, 255, 255))
 
     sy += 60
     surface.blit(label, (sx, sy))
 
     # timer
     font = pygame.font.Font(font_path, 40)
-    label = font.render('剩餘 ' + str(int(seconds//60)) + ":" + str(int(seconds%60)), 3, (255, 255, 255))
+    label = font.render("Time" + str(int(seconds//60)) + ":" + str(int(seconds%60)), 3, (255, 255, 255))
 
     sy += 60
     surface.blit(label, (sx, sy))
