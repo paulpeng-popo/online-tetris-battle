@@ -322,7 +322,7 @@ def draw_next_shape(shapes, surface):
     sx = top_left_x + play_width + 100
     sy = top_left_y - 10
 
-    surface.blit(label, (sx + 10, sy - 50))
+    surface.blit(label, (sx + 30, sy - 50))
 
     for shape in shapes:
         format = shape.shape[shape.rotation % len(shape.shape)]
@@ -353,7 +353,7 @@ def draw_hold_shape(shape, surface):
             if column == "0":
                 pygame.draw.rect(surface, shape.color, (sx+j*block_size, sy+i*block_size, block_size, block_size-2), 0)
 
-    surface.blit(label, (sx + 20, sy - 50))
+    surface.blit(label, (sx + 30, sy - 50))
 
 
 def update_score(nscore):
@@ -377,7 +377,7 @@ def max_score():
         return "0"
 
 
-def draw_window(surface, grid, tetris, combo, mini, tspin, b2b, score=0, last_score=0, seconds=120):
+def draw_window(surface, grid, rows, combo, mini, tspin, b2b, score=0, last_score=0, seconds=120):
 
     surface.fill((100, 100, 100))
     font_path = pygame.font.match_font("times")
@@ -386,54 +386,53 @@ def draw_window(surface, grid, tetris, combo, mini, tspin, b2b, score=0, last_sc
     # last score
     label = font.render("Record: " + last_score, 1, (255, 255, 255))
 
-    sx = top_left_x // 2 - (label.get_width()/2)
+    sx = top_left_x // 2 - (label.get_width()/2) - 30
     sy = top_left_y // 2 + 30
     surface.blit(label, (sx, sy))
 
     # current score
-    label = font.render("Lines sent: " + str(score), 1, (255, 255, 255))
+    label = font.render("Lines sent: " + str(int(score)), 1, (255, 255, 255))
 
     sy += 60
     surface.blit(label, (sx, sy))
 
     # timer
-    font = pygame.font.Font(font_path, 40)
-    label = font.render("Time" + str(int(seconds//60)) + ":" + str(int(seconds%60)), 3, (255, 255, 255))
-
+    label = font.render("Time " + str(int(seconds//60)) + ":" + str(int(seconds%60)), 3, (255, 255, 255))
     sy += 60
     surface.blit(label, (sx, sy))
 
     # tetris
-    if tetris:
-        font = pygame.font.Font(font_path, 20)
-        label = font.render("Tetris", 3, (255, 255, 255))
+    if rows == 4:
+        font = pygame.font.Font(font_path, 40)
+        label = font.render("Tetris", 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
 
     # combo
     if combo:
-        label = font.render("Combo x" + str(combo), 3, (255, 255, 255))
+        label = font.render("Combo x" + str(combo), 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
 
     # mini
     if mini:
-        label = font.render("Mini T-Spin", 3, (255, 255, 255))
+        label = font.render("Mini T-Spin", 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
 
     # tspin
     elif tspin:
+        text = ""
         if rows == 1: text = "Single"
         elif rows == 2: text = "Double"
         elif rows == 3: text = "Triple"
-        label = font.render("T-Spin " + text, 3, (255, 255, 255))
+        label = font.render("T-Spin " + text, 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
 
     # b2b
     if b2b:
-        label = font.render("Back-to-back", 3, (255, 255, 255))
+        label = font.render("Back-to-back", 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
 

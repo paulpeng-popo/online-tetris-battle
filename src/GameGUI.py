@@ -58,6 +58,7 @@ def main(win):
     tetris = False
     back_to_back = False
     arrive = False
+    eli_rows = 0
 
     while run:
 
@@ -152,21 +153,21 @@ def main(win):
 
         keys_pressed = pygame.key.get_pressed()
 
-        if keys_pressed[pygame.K_LEFT] and keys_buffer[0] >= 15:
+        if keys_pressed[pygame.K_LEFT] and keys_buffer[0] >= 20:
             keys_buffer = [0, 0, 0, 0]
             current_piece.x -= 1
             if not(valid_space(current_piece, grid)):
                 current_piece.x += 1
         else: keys_buffer[0] += 1
 
-        if keys_pressed[pygame.K_RIGHT] and keys_buffer[1] >= 15:
+        if keys_pressed[pygame.K_RIGHT] and keys_buffer[1] >= 20:
             keys_buffer = [0, 0, 0, 0]
             current_piece.x += 1
             if not(valid_space(current_piece, grid)):
                 current_piece.x -= 1
         else: keys_buffer[1] += 1
 
-        if keys_pressed[pygame.K_DOWN] and keys_buffer[2] >= 15:
+        if keys_pressed[pygame.K_DOWN] and keys_buffer[2] >= 20:
             keys_buffer = [0, 0, 0, 0]
             current_piece.y += 1
             if not(valid_space(current_piece, grid)):
@@ -199,14 +200,13 @@ def main(win):
             # print("mini_TSpin", mini_TSpin)
 
             if len(locked_positions) == 0: score += 10
-            tetris = eli_rows == 4
 
             result = cal_score(isTSpin, eli_rows, combo, back_to_back, mini_TSpin)
             score += result[0]
             back_to_back = result[1]
 
         timeup = draw_window(win, grid,
-                            tetris, combo, mini_TSpin, isTSpin, back_to_back,
+                            eli_rows, combo, mini_TSpin, isTSpin, back_to_back,
                             score, last_score, 181-seconds)
         draw_next_shape(next_pieces, win)
         draw_hold_shape(hold_piece, win)
@@ -228,9 +228,9 @@ def main(win):
             fall_speed *= 0.995
 
         if check_lost(locked_positions) or timeup:
-            draw_text_middle(win, "Gme Over", 80, (255,255,255), score)
+            draw_text_middle(win, "Game Over", 80, (255,255,255), score)
             pygame.display.update()
-            pygame.time.delay(2000)
+            pygame.time.delay(1500)
 
             run = False
             update_score(score)
@@ -255,12 +255,7 @@ def cal_score(isTSpin, rows, combo, b2b, mini):
     if combo >= 7: bouns = 4
     else: bouns = (combo-1)//2+1
 
-    if general > 0:
-        add_scores = general + bouns
-    else:
-        add_scores = 0
-
-    return (add_scores, b2b)
+    return (general + bouns, b2b)
 
 
 def tutorial(win):
