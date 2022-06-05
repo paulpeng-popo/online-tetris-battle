@@ -1,4 +1,4 @@
-import pygame
+import pygame, signal, sys
 from os import walk
 from tools.GameGUI import A_Button
 from tools.GameGUI import IMG_Button
@@ -20,19 +20,24 @@ soundPNG = { "path": "images/sound.png", "size": (100, 100) }
 mutePNG = { "path": "images/mute.png", "size": (100, 100) }
 
 
+def handler(signum, args):
+    print("Keyboard Interrupt")
+    sys.exit(1)
+
+
 def change_music(win):
 
     run = True
-    
+
     musics_data = []
     for (dirpath, dirnames, filenames) in walk("./musics"):
-    
+
         try: filenames.remove("descend.mp3")
         except: pass
-        
+
         musics_data.extend(filenames)
         break
-        
+
     for song in musics_data:
         gameBGM[song[:-4]] = { "path": "./musics/"+song, "volume": 0.7 }
 
@@ -67,9 +72,9 @@ def change_music(win):
 
         back.update(pygame.event.get())
         selected_option = musics_list.update(event_list)
-        
+
         if selected_option >= 0:
-        
+
             musics_list.main = musics_list.options[selected_option]
             pygame.mixer.music.stop()
             pygame.mixer.music.load(gameBGM[musics_list.main]["path"])
@@ -108,7 +113,7 @@ def main_menu(win):
     online = A_Button(canvas, "Online", Multiple, 650, 250, 200, 80)
     quit = A_Button(canvas, "Quit", quit_game, 650, 350, 200, 80)
     music = A_Button(canvas, "Edit Music", change_music, 650, 450, 200, 80)
-    
+
     buttons = [ single, online, quit, music ]
 
     ibutton = IMG_Button(sound, mute, (700, 650))
@@ -135,7 +140,7 @@ def main_menu(win):
 
         for button in buttons:
             button.update(pygame.event.get())
-            
+
         pygame.display.update()
         clock.tick(30)
 
@@ -150,13 +155,13 @@ def tetris():
     pygame.display.set_icon(programIcon)
     pygame.display.set_caption("Tetris Battle")
 
-    pygame.mixer.music.load(startBGM["path"])
-    pygame.mixer.music.set_volume(startBGM["volume"])
-    pygame.mixer.music.play(-1)
+    # pygame.mixer.music.load(startBGM["path"])
+    # pygame.mixer.music.set_volume(startBGM["volume"])
+    # pygame.mixer.music.play(-1)
 
     main_menu(win)
 
 
 if __name__=='__main__':
+    signal.signal(signal.SIGINT, handler)
     tetris()
-

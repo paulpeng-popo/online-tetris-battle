@@ -1,5 +1,5 @@
 from tools.GameFunctions import *
-from tools.Connect import ConnectServer
+from tools.Connect import Client
 import pygame
 
 pygame.init()
@@ -22,7 +22,7 @@ def tutorial(win):
     arrow = pygame.transform.scale(arrow, arrowPNG["size"])
     arrow_rect = arrow.get_rect()
     arrow_rect.topleft = arrowPNG["left_loc"]
-    
+
     keyz = pygame.image.load(keyzPNG["path"])
     keyz = pygame.transform.scale(keyz, keyzPNG["size"])
     keyz_rect = keyz.get_rect()
@@ -70,7 +70,7 @@ def tutorial(win):
         canvas.blit(keym, keym_rect)
         canvas.blit(keyp, keyp_rect)
         canvas.blit(spacebar, spacebar_rect)
-        
+
         win.blit(canvas, (0,0))
         canvas.fill((128, 128, 128))
         pygame.display.flip()
@@ -294,8 +294,8 @@ def Single(win):
 
             run = False
             update_score(score)
-            
-            
+
+
 def cal_score(isTSpin, rows, combo, b2b, mini):
 
     general = 0
@@ -316,78 +316,63 @@ def cal_score(isTSpin, rows, combo, b2b, mini):
     else: bouns = (combo-1)//2+1
 
     return (general + bouns, b2b)
-            
-            
+
+
 def Multiple(win):
-    
-    talk = ConnectServer()
-    talk.run()
-    talk.close()
-    
+
+    client = Client("popo")
+
+    if client.active:
+        select_mode(win)
+        client.disconnect()
+
+
+def select_mode(win):
+
     run = True
-    
-    musics_data = []
-    for (dirpath, dirnames, filenames) in walk("./musics"):
-    
-        try: filenames.remove("descend.mp3")
-        except: pass
-        
-        musics_data.extend(filenames)
-        break
-        
-    for song in musics_data:
-        gameBGM[song[:-4]] = { "path": "./musics/"+song, "volume": 0.7 }
+    clock = pygame.time.Clock()
 
     def back_to_home(args):
         nonlocal run
         run = False
 
-    title = pygame.image.load(titlePNG["path"])
-    title = pygame.transform.scale(title, titlePNG["size"])
-    title_rect = title.get_rect()
-
     canvas = pygame.Surface(win.get_size())
     canvas = canvas.convert()
 
+    create_room = A_Button(canvas, "Create New Room", back_to_home, 80, 300, 330, 200)
+    join_room = A_Button(canvas, "Join A Room", back_to_home, 490, 300, 330, 200)
     back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
-    musics_list = DropDown(
-        "vocaloid", list(gameBGM.keys()),
-        650, 100, 200, 80
-    )
+    buttons = [ create_room, join_room, back]
 
     while run:
 
-        canvas.blit(title, title_rect)
+        canvas.fill((128,128,128))
+
+        for button in buttons:
+            button.draw_button()
+
         win.blit(canvas, (0,0))
+        pygame.display.flip()
 
         event_list = pygame.event.get()
         for event in event_list:
             if event.type == pygame.QUIT:
                 run = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                back.on_click(event, win)
+                for button in buttons:
+                    button.on_click(event, win)
 
-        back.update(pygame.event.get())
-        selected_option = musics_list.update(event_list)
-        
-        if selected_option >= 0:
-        
-            musics_list.main = musics_list.options[selected_option]
-            pygame.mixer.music.stop()
-            pygame.mixer.music.load(gameBGM[musics_list.main]["path"])
-            pygame.mixer.music.set_volume(gameBGM[musics_list.main]["volume"])
-            pygame.mixer.music.play(-1)
+        for button in buttons:
+            button.update(pygame.event.get())
 
-        canvas.fill((128,128,128))
-        musics_list.draw(canvas)
-        back.draw_button()
-        pygame.display.flip()
+        pygame.display.update()
+        clock.tick(30)
 
 
 class A_Button():
 
     def __init__(self, screen, text, callback, x=0, y=0, w=200, h=80):
-    
+
         self.canvas = screen
         self.text = text
         self.button = {}
@@ -400,17 +385,17 @@ class A_Button():
         self.draw_button()
 
     def draw_button(self):
-    
+
         if self.button == {}:
             print("You should create button first!")
             return
-        
+
         pygame.draw.rect(self.canvas, self.button['color'], self.button['rect'])
         self.canvas.blit(self.button['text'], self.button['text rect'])
         pygame.display.update()
 
     def create_button(self):
-    
+
         font_path = pygame.font.match_font("times")
         font = pygame.font.Font(font_path, 40)
         text_surf = font.render(self.text, True, (0, 0, 0))
@@ -425,12 +410,12 @@ class A_Button():
         }
 
     def on_click(self, event, args):
-    
+
         if event.button == 1 and self.button['rect'].collidepoint(event.pos):
             self.callback(args)
 
     def update(self, event_list):
-    
+
         mpos = pygame.mouse.get_pos()
         self.active = self.button['rect'].collidepoint(mpos)
 
@@ -441,7 +426,7 @@ class A_Button():
 class IMG_Button():
 
     def __init__(self, image, click_image, position):
-    
+
         self.image = image
         self.rect = self.image.get_rect(topleft=position)
         self.click_image = click_image
@@ -449,12 +434,12 @@ class IMG_Button():
         self.type = True
 
     def on_click(self, event):
-    
+
         if event.button == 1 and self.rect.collidepoint(event.pos):
             self.change_type()
 
     def change_type(self):
-    
+
         self.temp = self.image
         self.image = self.click_image
         self.click_image = self.temp
@@ -468,7 +453,7 @@ class IMG_Button():
 class DropDown():
 
     def __init__(self, main, options, x=0, y=0, w=200, h=80):
-    
+
         font_path = pygame.font.match_font("times")
         self.font = pygame.font.Font(font_path, 40)
 
@@ -482,15 +467,15 @@ class DropDown():
         self.active_option = -1
 
     def draw(self, surf):
-    
+
         pygame.draw.rect(surf, self.color_menu[self.menu_active], self.rect, 0)
         msg = self.font.render(self.main, 1, (0, 0, 0))
         surf.blit(msg, msg.get_rect(center = self.rect.center))
 
         if self.draw_menu:
-        
+
             for i, text in enumerate(self.options):
-            
+
                 rect = self.rect.copy()
                 rect.y += (i+1) * self.rect.height
                 pygame.draw.rect(surf, self.color_option[1 if i == self.active_option else 0], rect, 0)
@@ -498,7 +483,7 @@ class DropDown():
                 surf.blit(msg, msg.get_rect(center = rect.center))
 
     def update(self, event_list):
-    
+
         mpos = pygame.mouse.get_pos()
         self.menu_active = self.rect.collidepoint(mpos)
 
@@ -521,4 +506,3 @@ class DropDown():
                     self.draw_menu = False
                     return self.active_option
         return -1
-
