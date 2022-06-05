@@ -267,7 +267,7 @@ def Single(win):
 
         timeup = draw_window(win, grid,
                             eli_rows, combo, mini_TSpin, isTSpin, back_to_back,
-                            score, last_score, 181-seconds)
+                            int(score), last_score, 181-seconds)
         draw_next_shape(next_pieces, win)
         draw_hold_shape(hold_piece, win)
         pygame.display.update()
@@ -288,12 +288,12 @@ def Single(win):
             fall_speed *= 0.995
 
         if check_lost(locked_positions) or timeup:
-            draw_text_middle(win, "Game Over", 80, (255,255,255), score)
+            draw_text_middle(win, "Game Over", 80, (255,255,255), int(score))
             pygame.display.update()
             pygame.time.delay(1500)
 
             run = False
-            update_score(score)
+            update_score(int(score))
 
 
 def cal_score(isTSpin, rows, combo, b2b, mini):
