@@ -266,7 +266,7 @@ def Single(win):
             back_to_back = result[1]
 
         timeup = draw_window(win, grid,
-                            eli_rows, combo, mini_TSpin, isTSpin, back_to_back,
+                            eli_rows, combo, mini_TSpin, isTSpin, back_to_back, len(locked_positions) == 0, 
                             int(score), last_score, 181-seconds)
         draw_next_shape(next_pieces, win)
         draw_hold_shape(hold_piece, win)

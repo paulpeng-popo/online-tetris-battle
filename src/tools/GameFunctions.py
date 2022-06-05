@@ -187,8 +187,11 @@ def convert_shape_format(shape):
 def valid_space(shape, grid, spin=False):
     accepted_pos = [[(j, i) for j in range(10) if grid[i][j] == (0,0,0)] for i in range(20)]
     accepted_pos = [j for sub in accepted_pos for j in sub]
+    accepted_pos.extend([(0, -1), (1, -1), (2, -1), (3, -1), (4, -1), (5, -1), (6, -1), (7, -1), (8, -1), (9, -1),
+                        (0, -2), (1, -2), (2, -2), (3, -2), (4, -2), (5, -2), (6, -2), (7, -2), (8, -2), (9, -2),
+                        (0, -3), (1, -3), (2, -3), (3, -3), (4, -3), (5, -3), (6, -3), (7, -3), (8, -3), (9, -3)])
 
-    if spin and shape.y > -1:
+    if spin:
         test_pos = [(0,0), (1,0), (-1,0), (2, 0), (-2, 0), (1,1), (-1,1), (1, 2), (-1, 2)]
         reset_pos = [(0,0), (-1,0), (1,0), (-2, 0), (2, 0), (-1,-1), (1,-1), (-1, -2), (1, -2)]
 
@@ -208,8 +211,7 @@ def valid_space(shape, grid, spin=False):
         formatted = convert_shape_format(shape)
         for pos in formatted:
             if pos not in accepted_pos:
-                if pos[1] > -1 or pos[0] < 0 or pos[0] > 9:
-                    return False
+                return False
         return True
 
 
@@ -248,7 +250,7 @@ def draw_text_middle(surface, text, size, color, score=-1):
 
     if score == -1: pass
     else:
-        label = font.render("Lines sent: "+str(score), 1, color)
+        label = font.render("Lines sent: " + str(score), 1, color)
 
         surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
                              top_left_y + play_height/2 - (label.get_height()/2) + 50))
@@ -377,7 +379,7 @@ def max_score():
         return "0"
 
 
-def draw_window(surface, grid, rows, combo, mini, tspin, b2b, score=0, last_score=0, seconds=120):
+def draw_window(surface, grid, rows, combo, mini, tspin, b2b, perfect, score=0, last_score=0, seconds=120):
 
     surface.fill((100, 100, 100))
     font_path = pygame.font.match_font("times")
@@ -391,7 +393,7 @@ def draw_window(surface, grid, rows, combo, mini, tspin, b2b, score=0, last_scor
     surface.blit(label, (sx, sy))
 
     # current score
-    label = font.render("Lines sent: " + str(int(score)), 1, (255, 255, 255))
+    label = font.render("Lines sent: " + str(score), 1, (255, 255, 255))
 
     sy += 60
     surface.blit(label, (sx, sy))
@@ -401,9 +403,10 @@ def draw_window(surface, grid, rows, combo, mini, tspin, b2b, score=0, last_scor
     sy += 60
     surface.blit(label, (sx, sy))
 
+    font = pygame.font.Font(font_path, 40)
+
     # tetris
     if rows == 4:
-        font = pygame.font.Font(font_path, 40)
         label = font.render("Tetris", 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
@@ -433,6 +436,11 @@ def draw_window(surface, grid, rows, combo, mini, tspin, b2b, score=0, last_scor
     # b2b
     if b2b:
         label = font.render("Back-to-back", 3, (255, 100, 100))
+        sy += 60
+        surface.blit(label, (sx, sy))
+
+    if perfect and score > 0:
+        label = font.render("Perfect Clear", 3, (255, 100, 100))
         sy += 60
         surface.blit(label, (sx, sy))
 
