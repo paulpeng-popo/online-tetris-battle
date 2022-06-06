@@ -156,9 +156,9 @@ def tetris():
     pygame.display.set_icon(programIcon)
     pygame.display.set_caption("Tetris Battle")
 
-    # pygame.mixer.music.load(startBGM["path"])
-    # pygame.mixer.music.set_volume(startBGM["volume"])
-    # pygame.mixer.music.play(-1)
+    pygame.mixer.music.load(startBGM["path"])
+    pygame.mixer.music.set_volume(startBGM["volume"])
+    pygame.mixer.music.play(-1)
 
     main_menu(win)
 

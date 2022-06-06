@@ -6,13 +6,21 @@ import json
 
 class Client():
 
-    # HOST = "172.29.116.72"
-    HOST = "127.0.0.1"
-    PORT = 18642
-    ADDR = (HOST, PORT)
     BUFSIZ = 1024
 
     def __init__(self):
+
+        try:
+            with open("./game_data/ip_port.txt", "r") as f:
+                lines = f.readlines()
+                HOST = lines[0].strip()
+                PORT = int(lines[1].strip())
+        except IOError:
+            print("Address file missing")
+
+        self.HOST = HOST
+        self.PORT = PORT
+        self.ADDR = (HOST, PORT)
 
         self.active = False
         self.client_connect()

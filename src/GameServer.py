@@ -20,14 +20,14 @@ class Player:
 
 class Server():
 
-    # HOST = "172.29.116.72"
-    HOST = "127.0.0.1"
-    PORT = 18642
-    ADDR = (HOST, PORT)
     MAX_CONNECTIONS = 100
     BUFSIZ = 1024
 
-    def __init__(self):
+    def __init__(self, host, port):
+
+        self.HOST = host
+        self.PORT = port
+        self.ADDR = (host, port)
 
         self.master_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.master_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -220,6 +220,14 @@ class Server():
 
 if __name__ == '__main__':
 
-    server = Server()
+    try:
+        with open("./game_data/ip_port.txt", "r") as f:
+            lines = f.readlines()
+            HOST = lines[0].strip()
+            PORT = lines[1].strip()
+    except IOError:
+        print("Address file missing")
+
+    server = Server(HOST, int(PORT))
     server.listen_for_connections()
     signal.signal(signal.SIGINT, server.handler)
