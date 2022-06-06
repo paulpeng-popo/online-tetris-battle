@@ -252,13 +252,11 @@ def Single(win):
             next_pieces.append(get_shape(shapes_box))
             eli_rows = clear_rows(grid, locked_positions)
 
+            isTSpin = False
+            mini_TSpin = False
+
             if spin_count and eli_rows: isTSpin = True
             if spin_count == 1 and eli_rows: mini_TSpin = True
-
-            # print("spin count", spin_count)
-            # print("isTSpin", isTSpin)
-            # print("mini_TSpin", mini_TSpin)
-
             if len(locked_positions) == 0: score += 10
 
             result = cal_score(isTSpin, eli_rows, combo, back_to_back, mini_TSpin)
@@ -267,7 +265,7 @@ def Single(win):
 
         timeup = draw_window(win, grid,
                             eli_rows, combo, mini_TSpin, isTSpin, back_to_back, len(locked_positions) == 0,
-                            int(score), last_score, 181-seconds)
+                            line=0, score=int(score), last_score=last_score, seconds=181-seconds)
         draw_next_shape(next_pieces, win)
         draw_hold_shape(hold_piece, win)
         pygame.display.update()
@@ -277,14 +275,12 @@ def Single(win):
             change_piece = False
             replace_lock = False
             hold_piece.color = replace_color
+
             if eli_rows > 0: combo += 1
             else: combo = 0
 
             spin_count = 0
-            isTSpin = False
-            mini_TSpin = False
             arrive = False
-
             fall_speed *= 0.995
 
         if check_lost(locked_positions) or timeup:
@@ -365,10 +361,6 @@ def Multiple(win):
 
     def battle_mode(win):
 
-        if client.send_message({"request": "2p"}, False) == False:
-            popup_canvas(win, "Stale connection")
-            return
-
         room_text = client.log_messages["room"]
 
         run = True
@@ -388,7 +380,13 @@ def Multiple(win):
         back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
         buttons = [ back ]
 
+        response = None
+
         while run:
+
+            if "server_response" in client.log_messages:
+                response = client.log_messages["server_response"]
+                if response: run = False
 
             canvas.fill((128,128,128))
             canvas.blit(label, ((s_width-label.get_width())/2, 80))
@@ -412,6 +410,10 @@ def Multiple(win):
 
             pygame.display.update()
             clock.tick(30)
+
+        if response:
+            Multiple_game(win, client)
+            return
 
     def create(win):
         if client.send_message({"request": "CREATE"}) == False:
@@ -454,11 +456,13 @@ def Multiple(win):
         back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
         buttons = [ back ]
 
+        response = None
+
         while run:
 
             if "server_response" in client.log_messages:
                 response = client.log_messages["server_response"]
-                if response: pass
+                if response: run = False
 
             canvas.fill((128,128,128))
             canvas.blit(label, ((s_width-label.get_width())/2, 250))
@@ -491,6 +495,10 @@ def Multiple(win):
             pygame.display.update()
             clock.tick(30)
 
+        if response:
+            Multiple_game(win, client)
+            return
+
     if client.active:
         canvas = pygame.Surface(win.get_size())
         canvas = canvas.convert()
@@ -503,6 +511,216 @@ def Multiple(win):
         client.disconnect()
     else:
         popup_canvas(win, "GameServer is not running")
+
+
+def Multiple_game(win, client):
+
+    locked_positions = {}
+    grid = create_grid(locked_positions)
+    shapes_box = [I, Z, S, J, L, T, Q]
+    down_sound = pygame.mixer.Sound("./musics/descend.mp3")
+
+    run = True
+    change_piece = False
+    current_piece = get_shape(shapes_box)
+    next_pieces = [
+        get_shape(shapes_box)
+    ]
+    hold_piece = get_shape(shapes_box, "empty")
+    temp_piece = get_shape(shapes_box, "empty")
+    clock = pygame.time.Clock()
+    fall_time = 0
+    fall_speed = 1
+    sep_time = 500
+    score = 0
+    keys_buffer = [0, 0, 0]
+    project_pos = {}
+    start_ticks = pygame.time.get_ticks()
+
+    combo = 0
+    spin_count = 0
+    isTSpin = False
+    mini_TSpin = False
+    tetris = False
+    back_to_back = False
+    arrive = False
+    eli_rows = 0
+
+    line_sent = [0]
+    bias = 0
+    winner = None
+
+    while run:
+
+        if len(shapes_box) <= 0:
+            shapes_box = [I, Z, S, J, L, T, Q]
+
+        seconds = (pygame.time.get_ticks()-start_ticks)/1000
+        grid = create_grid(locked_positions)
+        fall_time += clock.get_rawtime()
+        clock.tick()
+
+        if fall_time/sep_time > fall_speed:
+            fall_time = 0
+            current_piece.y += 1
+            if not(valid_space(current_piece, grid)) and current_piece.y > 0:
+                current_piece.y -= 1
+                change_piece = True
+
+        if "line_sent" in client.log_messages:
+            line_sent.append(client.log_messages["line_sent"])
+            line_sent[-1] = int(line_sent[-1]) - score - bias
+
+        if "winner" in client.log_messages:
+            winner = client.log_messages["winner"]
+            seconds = 122
+
+        shape_pos = convert_shape_format(current_piece)
+        project_pos = get_project(grid, shape_pos)
+
+        if any(pos in project_pos for pos in shape_pos):
+            arrive = True
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    current_piece.rotation += 1
+                    if arrive and current_piece.shape == T:
+                        spin_count += 1
+                    if not(valid_space(current_piece, grid, True)):
+                        current_piece.rotation -= 1
+                        if arrive and current_piece.shape == T:
+                            spin_count -= 1
+                elif event.key == pygame.K_z:
+                    if arrive and current_piece.shape == T:
+                        spin_count = 1
+                    current_piece.rotation -= 1
+                    if not(valid_space(current_piece, grid, True)):
+                        current_piece.rotation += 1
+                        if arrive and current_piece.shape == T:
+                            spin_count = 0
+                elif event.key == pygame.K_SPACE:
+                    if down_sound:
+                        pygame.mixer.Sound.play(down_sound)
+                    shape_pos = project_pos
+                    change_piece = True
+                elif event.key == pygame.K_m:
+                    if down_sound:
+                        down_sound = None
+                    else:
+                        down_sound = pygame.mixer.Sound("./musics/descend.mp3")
+                elif event.key == pygame.K_c:
+                    temp_piece.replace(current_piece)
+                    current_piece.replace(hold_piece)
+                    hold_piece.replace(temp_piece)
+                    if current_piece.color == (0, 0, 0):
+                        current_piece = next_pieces.pop(0)
+                        next_pieces.append(get_shape(shapes_box))
+
+        keys_pressed = pygame.key.get_pressed()
+
+        if keys_pressed[pygame.K_LEFT] and keys_buffer[0] >= 20:
+            keys_buffer = [0, 0, 0]
+            current_piece.x -= 1
+            if not(valid_space(current_piece, grid)):
+                current_piece.x += 1
+        else: keys_buffer[0] += 1
+
+        if keys_pressed[pygame.K_RIGHT] and keys_buffer[1] >= 20:
+            keys_buffer = [0, 0, 0]
+            current_piece.x += 1
+            if not(valid_space(current_piece, grid)):
+                current_piece.x -= 1
+        else: keys_buffer[1] += 1
+
+        if keys_pressed[pygame.K_DOWN] and keys_buffer[2] >= 20:
+            keys_buffer = [0, 0, 0]
+            current_piece.y += 1
+            if not(valid_space(current_piece, grid)):
+                current_piece.y -= 1
+        else: keys_buffer[2] += 1
+
+        for i in range(len(project_pos)):
+            x, y = project_pos[i]
+            if y > -1:
+                grid[y][x] = (238, 229, 222)
+
+        for i in range(len(shape_pos)):
+            x, y = shape_pos[i]
+            if y > -1:
+                grid[y][x] = current_piece.color
+
+        if change_piece:
+            for pos in shape_pos:
+                p = (pos[0], pos[1])
+                locked_positions[p] = current_piece.color
+            current_piece = next_pieces.pop(0)
+            next_pieces.append(get_shape(shapes_box))
+            eli_rows = clear_rows(grid, locked_positions)
+
+            isTSpin = False
+            mini_TSpin = False
+
+            if spin_count and eli_rows: isTSpin = True
+            if spin_count == 1 and eli_rows: mini_TSpin = True
+            if len(locked_positions) == 0: score += 10
+
+            result = cal_score(isTSpin, eli_rows, combo, back_to_back, mini_TSpin)
+            score += result[0]
+            client.send_message({"line_sent": score})
+            back_to_back = result[1]
+
+            if line_sent[0] > 0:
+                generate_block(locked_positions, line_sent[0])
+                bias += line_sent[0]
+
+        timeup = draw_window(win, grid,
+                            eli_rows, combo, mini_TSpin, isTSpin, back_to_back, len(locked_positions) == 0,
+                            line=line_sent[0], score=int(score), seconds=121-seconds)
+        draw_next_shape(next_pieces, win)
+        draw_hold_shape(hold_piece, win)
+        pygame.display.update()
+
+        if change_piece:
+
+            change_piece = False
+
+            if eli_rows > 0: combo += 1
+            else: combo = 0
+
+            spin_count = 0
+            arrive = False
+
+        if check_lost(locked_positions) or timeup:
+            if winner != None:
+                if winner == "opponent":
+                    draw_text_middle(win, "You Win", 80, (255,255,255))
+                    client.send_message({"winner": "self"})
+                elif winner == "self":
+                    draw_text_middle(win, "You Lose", 80, (255,255,255))
+                    client.send_message({"winner": "opponent"})
+            elif timeup:
+                if line_sent[-1] > score:
+                    draw_text_middle(win, "You Lose", 80, (255,255,255))
+                    client.send_message({"winner": "opponent"})
+                elif line_sent[-1] == score:
+                    draw_text_middle(win, "Draw", 80, (255,255,255))
+                    client.send_message({"winner": None})
+                else:
+                    draw_text_middle(win, "You Win", 80, (255,255,255))
+                    client.send_message({"winner": "self"})
+            else:
+                draw_text_middle(win, "You Lose", 80, (255,255,255))
+                client.send_message({"winner": "opponent"})
+
+            pygame.display.update()
+            pygame.time.delay(1500)
+            run = False
+
+        if len(line_sent) > 1:
+            line_sent.pop(0)
 
 
 def popup_canvas(win, text):
@@ -535,41 +753,40 @@ class InputBox:
         self.active = False
         self.client = client
         self.win = win
+        self.text_num = 0
+        self.text_full = False
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
-            # If the user clicked on the input_box rect.
             if self.rect.collidepoint(event.pos):
-                # Toggle the active variable.
                 self.active = not self.active
             else:
                 self.active = False
-            # Change the current color of the input box.
             self.color = self.COLOR_ACTIVE if self.active else self.COLOR_INACTIVE
         if event.type == pygame.KEYDOWN:
             if self.active:
                 if event.key == pygame.K_RETURN:
-                    print(self.text)
                     if self.text != "" and len(self.text) == 8:
                         self.client.send_message({"room": self.text, "server_response": None}, False)
                     else:
                         popup_canvas(self.win, "Invalid room code")
                 elif event.key == pygame.K_BACKSPACE:
                     self.text = self.text[:-1]
+                    if self.text_num > 0:
+                        self.text_num -= 1
+                        self.text_full = False
                 else:
-                    self.text += event.unicode
-                # Re-render the text.
-                self.txt_surface = self.FONT.render(self.text, True, self.color)
+                    if not self.text_full:
+                        self.text += event.unicode
+                        self.text_num += 1
+                    if self.text_num == 8: self.text_full = True
+                self.txt_surface = self.FONT.render(self.text, True, (255,255,255))
 
     def update(self):
-        # Resize the box if the text is too long.
-        width = max(320, self.txt_surface.get_width()+20)
-        self.rect.w = width
+        self.rect.w = 350
 
     def draw(self, screen):
-        # Blit the text.
         screen.blit(self.txt_surface, (self.rect.x+10, self.rect.y-10))
-        # Blit the rect.
         pygame.draw.rect(screen, self.color, self.rect, 2)
 
 

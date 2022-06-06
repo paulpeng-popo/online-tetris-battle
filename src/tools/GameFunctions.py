@@ -266,6 +266,18 @@ def draw_grid(surface, grid):
             pygame.draw.line(surface, (119, 136, 153), (sx+j*block_size, sy),(sx+j*block_size, sy+play_height))
 
 
+def draw_line_sent(surface, line):
+
+    sx = top_left_x
+    sy = top_left_y
+
+    pygame.draw.line(surface, (255, 0, 0), (sx-10, sy+20*block_size), (sx-10, sy+(20-line)*block_size))
+    pygame.draw.line(surface, (255, 0, 0), (sx-11, sy+20*block_size), (sx-11, sy+(20-line)*block_size))
+    pygame.draw.line(surface, (255, 0, 0), (sx-12, sy+20*block_size), (sx-12, sy+(20-line)*block_size))
+    pygame.draw.line(surface, (255, 0, 0), (sx-13, sy+20*block_size), (sx-13, sy+(20-line)*block_size))
+    pygame.draw.line(surface, (255, 0, 0), (sx-14, sy+20*block_size), (sx-14, sy+(20-line)*block_size))
+
+
 def clear_rows(grid, locked):
 
     inc = 0 # num of eliminated rows
@@ -314,6 +326,22 @@ def clear_rows(grid, locked):
                     locked[newKey] = locked.pop(key)
 
     return inc
+
+
+def generate_block(locked_positions, line_sent):
+
+    sorted_locked = sorted(list(locked_positions), key=lambda x: x[1])
+
+    for key in sorted_locked:
+        x, y = key
+        newKey = (x, y - line_sent)
+        locked_positions[newKey] = locked_positions.pop(key)
+
+    for i in range(19, 19-line_sent, -1):
+        empty = random.randint(0, 9)
+        for j in range(10):
+            if j != empty:
+                locked_positions[(j, i)] = (100,100,100)
 
 
 def draw_next_shape(shapes, surface):
@@ -379,24 +407,23 @@ def max_score():
         return "0"
 
 
-def draw_window(surface, grid, rows, combo, mini, tspin, b2b, perfect, score=0, last_score=0, seconds=120):
+def draw_window(surface, grid, rows, combo, mini, tspin, b2b, perfect, line=0, score=0, last_score=0, seconds=120):
 
     surface.fill((100, 100, 100))
     font_path = pygame.font.match_font("times")
     font = pygame.font.Font(font_path, 30)
 
-    # last score
-    label = font.render("Record: " + last_score, 1, (255, 255, 255))
-
+    # current score
+    label = font.render("Lines sent: " + str(score), 1, (255, 255, 255))
     sx = top_left_x // 2 - (label.get_width()/2) - 30
     sy = top_left_y // 2 + 30
     surface.blit(label, (sx, sy))
 
-    # current score
-    label = font.render("Lines sent: " + str(score), 1, (255, 255, 255))
-
-    sy += 60
-    surface.blit(label, (sx, sy))
+    # last score
+    if last_score != 0:
+        label = font.render("Record: " + last_score, 1, (255, 255, 255))
+        sy += 60
+        surface.blit(label, (sx, sy))
 
     # timer
     label = font.render("Time " + str(int(seconds//60)) + ":" + str(int(seconds%60)), 3, (255, 255, 255))
@@ -451,9 +478,10 @@ def draw_window(surface, grid, rows, combo, mini, tspin, b2b, perfect, score=0, 
     pygame.draw.rect(surface, (0, 255, 255), (top_left_x, top_left_y, play_width, play_height), 3)
 
     draw_grid(surface, grid)
+    if line > 0: draw_line_sent(surface, line)
 
     if seconds <= 10:
-        draw_text_middle(surface, str(int(seconds)), 80, (255, 105, 180))
+        if int(seconds) < 0: draw_text_middle(surface, str(int(seconds)), 80, (255, 105, 180))
         if int(seconds) <= 0: return True
 
     return False

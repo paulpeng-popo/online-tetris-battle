@@ -12,7 +12,6 @@ class Player:
     def __init__(self, addr, client):
         self.addr = addr
         self.client = client
-        self.ready = False
         self.name = None
 
     def set_name(self, name):
@@ -86,7 +85,7 @@ class Server():
     def client_communication(self, player):
 
         client = player.client
-        client.settimeout(60.0)
+        client.settimeout(30.0)
 
         addr = player.addr
         room = "public"
@@ -100,22 +99,35 @@ class Server():
                 msg = client.recv(self.BUFSIZ)
                 msg = json.loads(msg.decode("utf-8"))["request"]
                 if msg == "CREATE":
-                    print(self.players)
                     for room_name in list(self.players):
                         if self.leave_room(room_name, addr):
                             break
                     room = self.new_room(addr, player)
                     response = json.dumps({"room": room}).encode('utf-8')
                     client.sendall(response)
-                    print(self.players)
+
+                    timeout_time = time.time() + 30
+
+                    while time.time() < timeout_time:
+
+                        num_of_player = 2
+                        in_room_players = len(self.players[room])
+
+                        if num_of_player == in_room_players:
+                            res = json.dumps({"server_response": True}).encode('utf-8')
+                            client.sendall(res)
+                            self.communicate(client, addr, room)
+                            break
+
                 elif msg == "JOIN":
                     while True:
                         message = client.recv(self.BUFSIZ)
                         message = json.loads(message.decode("utf-8"))
                         if "room" in list(message):
                             room = message["room"]
-                        command = message["server_response"]
-                        
+                        if "server_response" in list(message):
+                            command = message["server_response"]
+
                         if command == "RETURN":
                             break
                         elif room in list(self.players):
@@ -125,7 +137,8 @@ class Server():
                             self.list_lock.acquire()
                             self.players[room].append(player)
                             self.list_lock.release()
-                            print(self.players)
+                            self.communicate(client, addr, room)
+                            break
                         else:
                             response = json.dumps({"server_response": False}).encode('utf-8')
                             client.sendall(response)
@@ -133,8 +146,7 @@ class Server():
                     self.client_leave(client, room, addr, name)
                     break
                 else:
-                    self.broadcast(room, msg, name+": ")
-                    # print(f"{name}: ", msg.decode("utf8"))
+                    pass
             except socket.timeout:
                 self.client_leave(client, room, addr, name)
                 break
@@ -153,7 +165,7 @@ class Server():
 
     def new_room(self, addr, player):
         while True:
-            all_chars = list(string.digits + string.ascii_letters)
+            all_chars = list(string.digits)
             random.shuffle(all_chars)
             room = ''.join(all_chars[:8])
             if room not in self.players:
@@ -176,16 +188,25 @@ class Server():
         self.list_lock.release()
         return delete_suc
 
-    def broadcast(self, room, msg, name):
-        pass
-        # for player in self.players[room]:
-        #     client = player.client
-        #     try:
-        #         client.sendall(bytes(name, "utf8") + msg)
-        #     except Exception as e:
-        #         print("broadcast [EXCEPTION]", e)
-        #         print("Communication thread closed")
-        #         sys.exit(1)
+    def communicate(self, client, addr, room):
+        while True:
+            message = client.recv(self.BUFSIZ)
+            print(message)
+            check = json.loads(message.decode("utf-8"))
+            self.broadcast(room, message, addr)
+            if "winner" in check:
+                break
+
+    def broadcast(self, room, msg, addr):
+        for player in self.players[room]:
+            if player.addr != addr:
+                client = player.client
+                try:
+                    client.sendall(msg)
+                except Exception as e:
+                    print("broadcast [EXCEPTION]", e)
+                    print("Communication thread closed")
+                    sys.exit(1)
 
     def handler(self, signum, args):
         self.server_stop()
