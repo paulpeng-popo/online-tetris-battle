@@ -5,6 +5,7 @@ from tools.GameGUI import IMG_Button
 from tools.GameGUI import DropDown
 from tools.GameGUI import Single
 from tools.GameGUI import Multiple
+import time
 
 pygame.init()
 pygame.mixer.init()

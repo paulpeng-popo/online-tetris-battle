@@ -266,7 +266,7 @@ def Single(win):
             back_to_back = result[1]
 
         timeup = draw_window(win, grid,
-                            eli_rows, combo, mini_TSpin, isTSpin, back_to_back, len(locked_positions) == 0, 
+                            eli_rows, combo, mini_TSpin, isTSpin, back_to_back, len(locked_positions) == 0,
                             int(score), last_score, 181-seconds)
         draw_next_shape(next_pieces, win)
         draw_hold_shape(hold_piece, win)
@@ -318,16 +318,11 @@ def cal_score(isTSpin, rows, combo, b2b, mini):
     return (general + bouns, b2b)
 
 
-def Multiple(win):
-
-    client = Client("popo")
-
-    if client.active:
-        select_mode(win)
-        client.disconnect()
+def not_yet_develop(win):
+    popup_canvas(win, "This function is not available")
 
 
-def select_mode(win):
+def page_template(win, canvas, buttons):
 
     run = True
     clock = pygame.time.Clock()
@@ -336,13 +331,8 @@ def select_mode(win):
         nonlocal run
         run = False
 
-    canvas = pygame.Surface(win.get_size())
-    canvas = canvas.convert()
-
-    create_room = A_Button(canvas, "Create New Room", back_to_home, 80, 300, 330, 200)
-    join_room = A_Button(canvas, "Join A Room", back_to_home, 490, 300, 330, 200)
     back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
-    buttons = [ create_room, join_room, back]
+    buttons.append(back)
 
     while run:
 
@@ -367,6 +357,220 @@ def select_mode(win):
 
         pygame.display.update()
         clock.tick(30)
+
+
+def Multiple(win):
+
+    client = Client()
+
+    def battle_mode(win):
+
+        if client.send_message({"request": "2p"}, False) == False:
+            popup_canvas(win, "Stale connection")
+            return
+
+        room_text = client.log_messages["room"]
+
+        run = True
+        clock = pygame.time.Clock()
+
+        def back_to_home(args):
+            nonlocal run
+            run = False
+
+        canvas = pygame.Surface(win.get_size())
+        canvas = canvas.convert()
+
+        font_path = pygame.font.match_font("times")
+        font = pygame.font.Font(font_path, 80, bold=True)
+        label = font.render(room_text, 1, (0, 0, 0))
+
+        back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
+        buttons = [ back ]
+
+        while run:
+
+            canvas.fill((128,128,128))
+            canvas.blit(label, ((s_width-label.get_width())/2, 80))
+
+            for button in buttons:
+                button.draw_button()
+
+            win.blit(canvas, (0,0))
+            pygame.display.flip()
+
+            event_list = pygame.event.get()
+            for event in event_list:
+                if event.type == pygame.QUIT:
+                    run = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    for button in buttons:
+                        button.on_click(event, win)
+
+            for button in buttons:
+                button.update(pygame.event.get())
+
+            pygame.display.update()
+            clock.tick(30)
+
+    def create(win):
+        if client.send_message({"request": "CREATE"}) == False:
+            popup_canvas(win, "Server is down")
+            return
+
+        canvas = pygame.Surface(win.get_size())
+        canvas = canvas.convert()
+
+        two = A_Button(canvas, "2-player battle", battle_mode, 80, 300, 330, 200)
+        four = A_Button(canvas, "4-player racing", not_yet_develop, 490, 300, 330, 200)
+        buttons = [ two, four ]
+
+        page_template(win, canvas, buttons)
+
+    def join(win):
+
+        if client.send_message({"request": "JOIN"}) == False:
+            popup_canvas(win, "Server is down")
+            return
+
+        run = True
+        clock = pygame.time.Clock()
+
+        def back_to_home(args):
+            nonlocal run
+            client.send_message({"server_response": "RETURN"}, False)
+            run = False
+
+        canvas = pygame.Surface(win.get_size())
+        canvas = canvas.convert()
+
+        font_path = pygame.font.match_font("times")
+        font = pygame.font.Font(font_path, 80, bold=True)
+        label = font.render("Enter the room code", 1, (0, 0, 0))
+
+        input_box = InputBox(win, 290, 400, 400, 90, client)
+        input_boxes = [ input_box ]
+
+        back = A_Button(canvas, "Return", back_to_home, 650, 600, 200, 80)
+        buttons = [ back ]
+
+        while run:
+
+            if "server_response" in client.log_messages:
+                response = client.log_messages["server_response"]
+                if response: pass
+
+            canvas.fill((128,128,128))
+            canvas.blit(label, ((s_width-label.get_width())/2, 250))
+
+            for button in buttons:
+                button.draw_button()
+
+            for box in input_boxes:
+                box.draw(canvas)
+
+            win.blit(canvas, (0,0))
+            pygame.display.flip()
+
+            event_list = pygame.event.get()
+            for event in event_list:
+                if event.type == pygame.QUIT:
+                    run = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    for button in buttons:
+                        button.on_click(event, win)
+                for box in input_boxes:
+                    box.handle_event(event)
+
+            for box in input_boxes:
+                box.update()
+
+            for button in buttons:
+                button.update(pygame.event.get())
+
+            pygame.display.update()
+            clock.tick(30)
+
+    if client.active:
+        canvas = pygame.Surface(win.get_size())
+        canvas = canvas.convert()
+
+        create_room = A_Button(canvas, "Create New Room", create, 80, 300, 330, 200)
+        join_room = A_Button(canvas, "Join A Room", join, 490, 300, 330, 200)
+        buttons = [ create_room, join_room ]
+
+        page_template(win, canvas, buttons)
+        client.disconnect()
+    else:
+        popup_canvas(win, "GameServer is not running")
+
+
+def popup_canvas(win, text):
+
+    font_path = pygame.font.match_font("times")
+    font = pygame.font.Font(font_path, 40, bold=True)
+    label = font.render(text, 1, (0, 0, 0))
+
+    temp_surface = pygame.Surface((s_width, 100))
+    temp_surface.fill((128, 128, 128))
+    temp_surface.blit(label, ((s_width-label.get_width())/2, 30))
+    win.blit(temp_surface, (0, 0))
+
+    pygame.display.update()
+    pygame.time.delay(1500)
+
+
+class InputBox:
+
+    COLOR_INACTIVE = pygame.Color('lightskyblue3')
+    COLOR_ACTIVE = pygame.Color('dodgerblue2')
+    font_path = pygame.font.match_font("times")
+    FONT = pygame.font.Font(font_path, 80, bold=True)
+
+    def __init__(self, win, x, y, w, h, client=None, text=''):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.color = self.COLOR_INACTIVE
+        self.text = text
+        self.txt_surface = self.FONT.render(text, True, self.color)
+        self.active = False
+        self.client = client
+        self.win = win
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # If the user clicked on the input_box rect.
+            if self.rect.collidepoint(event.pos):
+                # Toggle the active variable.
+                self.active = not self.active
+            else:
+                self.active = False
+            # Change the current color of the input box.
+            self.color = self.COLOR_ACTIVE if self.active else self.COLOR_INACTIVE
+        if event.type == pygame.KEYDOWN:
+            if self.active:
+                if event.key == pygame.K_RETURN:
+                    print(self.text)
+                    if self.text != "" and len(self.text) == 8:
+                        self.client.send_message({"room": self.text, "server_response": None}, False)
+                    else:
+                        popup_canvas(self.win, "Invalid room code")
+                elif event.key == pygame.K_BACKSPACE:
+                    self.text = self.text[:-1]
+                else:
+                    self.text += event.unicode
+                # Re-render the text.
+                self.txt_surface = self.FONT.render(self.text, True, self.color)
+
+    def update(self):
+        # Resize the box if the text is too long.
+        width = max(320, self.txt_surface.get_width()+20)
+        self.rect.w = width
+
+    def draw(self, screen):
+        # Blit the text.
+        screen.blit(self.txt_surface, (self.rect.x+10, self.rect.y-10))
+        # Blit the rect.
+        pygame.draw.rect(screen, self.color, self.rect, 2)
 
 
 class A_Button():

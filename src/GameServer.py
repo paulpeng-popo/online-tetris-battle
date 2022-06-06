@@ -1,5 +1,11 @@
 from threading import Thread, Lock
-import socket, time, signal, sys
+import socket
+import signal
+import string
+import random
+import time
+import json
+import sys
 
 class Player:
 
@@ -28,8 +34,9 @@ class Server():
         self.master_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.master_socket.bind(self.ADDR)
 
-        self.players = []
+        self.players = { "public": [] }
         self.lock = Lock()
+        self.list_lock = Lock()
         self.run = True
 
     def listen_for_connections(self):
@@ -61,7 +68,10 @@ class Server():
                 client, addr = self.master_socket.accept()
 
                 player = Player(addr, client)
-                self.players.append(player)
+
+                self.list_lock.acquire()
+                self.players["public"].append(player)
+                self.list_lock.release()
 
                 datetime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
                 print(f"[CONNECT] {addr} connected at {datetime}")
@@ -76,37 +86,106 @@ class Server():
     def client_communication(self, player):
 
         client = player.client
+        client.settimeout(60.0)
 
-        name = client.recv(self.BUFSIZ).decode("utf-8")
+        addr = player.addr
+        room = "public"
+
+        name = client.recv(self.BUFSIZ)
+        name = json.loads(name.decode("utf-8"))["name"]
         player.set_name(name)
 
-        # msg = bytes(f"{name} has joined the public room", "utf8")
-        # self.broadcast(msg, "")
-
         while True:
-            msg = client.recv(self.BUFSIZ)
-
-            if msg == bytes("{quit}", "utf8"):
-                client.send(bytes("END", "utf8"))
-                client.close()
-                self.players.remove(player)
-
-                # self.broadcast(bytes(f"{name} has left the public room", "utf8"), "")
-                print(f"[DISCONNECT] {name} disconnected")
-                break
-            else:
-                self.broadcast(msg, name+": ")
-                # print(f"{name}: ", msg.decode("utf8"))
-
-    def broadcast(self, msg, name):
-
-        for player in self.players:
-            client = player.client
             try:
-                client.send(bytes(name, "utf8") + msg)
-            except Exception as e:
-                print("broadcast [EXCEPTION]", e)
-                sys.exit(1)
+                msg = client.recv(self.BUFSIZ)
+                msg = json.loads(msg.decode("utf-8"))["request"]
+                if msg == "CREATE":
+                    print(self.players)
+                    for room_name in list(self.players):
+                        if self.leave_room(room_name, addr):
+                            break
+                    room = self.new_room(addr, player)
+                    response = json.dumps({"room": room}).encode('utf-8')
+                    client.sendall(response)
+                    print(self.players)
+                elif msg == "JOIN":
+                    while True:
+                        message = client.recv(self.BUFSIZ)
+                        message = json.loads(message.decode("utf-8"))
+                        if "room" in list(message):
+                            room = message["room"]
+                        command = message["server_response"]
+                        
+                        if command == "RETURN":
+                            break
+                        elif room in list(self.players):
+                            response = json.dumps({"server_response": True}).encode('utf-8')
+                            client.sendall(response)
+                            self.leave_room("public", addr)
+                            self.list_lock.acquire()
+                            self.players[room].append(player)
+                            self.list_lock.release()
+                            print(self.players)
+                        else:
+                            response = json.dumps({"server_response": False}).encode('utf-8')
+                            client.sendall(response)
+                elif msg == "{quit}":
+                    self.client_leave(client, room, addr, name)
+                    break
+                else:
+                    self.broadcast(room, msg, name+": ")
+                    # print(f"{name}: ", msg.decode("utf8"))
+            except socket.timeout:
+                self.client_leave(client, room, addr, name)
+                break
+
+    def client_leave(self, client, room, addr, name):
+        response = json.dumps({"server_response": "END"}).encode('utf-8')
+        try:
+            client.sendall(response)
+            client.close()
+        except Exception as e:
+            pass
+
+        self.leave_room(room, addr)
+        datetime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+        print(f"[DISCONNECT] {name} {addr} disconnected at {datetime}")
+
+    def new_room(self, addr, player):
+        while True:
+            all_chars = list(string.digits + string.ascii_letters)
+            random.shuffle(all_chars)
+            room = ''.join(all_chars[:8])
+            if room not in self.players:
+                self.leave_room("public", addr)
+                self.list_lock.acquire()
+                self.players[room] = [player]
+                self.list_lock.release()
+                return room
+
+    def leave_room(self, room_name, addr):
+        delete_suc = False
+        self.list_lock.acquire()
+        for player in self.players[room_name]:
+            if player.addr == addr:
+                self.players[room_name].remove(player)
+                delete_suc = True
+                break
+        if room_name != "public" and len(self.players[room_name]) == 0:
+            self.players.pop(room_name)
+        self.list_lock.release()
+        return delete_suc
+
+    def broadcast(self, room, msg, name):
+        pass
+        # for player in self.players[room]:
+        #     client = player.client
+        #     try:
+        #         client.sendall(bytes(name, "utf8") + msg)
+        #     except Exception as e:
+        #         print("broadcast [EXCEPTION]", e)
+        #         print("Communication thread closed")
+        #         sys.exit(1)
 
     def handler(self, signum, args):
         self.server_stop()

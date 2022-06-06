@@ -1,5 +1,8 @@
 from threading import Thread, Lock
-import socket, time
+import socket
+import time
+import copy
+import json
 
 class Client():
 
@@ -9,18 +12,22 @@ class Client():
     ADDR = (HOST, PORT)
     BUFSIZ = 1024
 
-    def __init__(self, name):
+    def __init__(self):
+
+        self.active = False
+        self.client_connect()
+
+    def client_connect(self):
 
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         try:
             self.client_socket.connect(self.ADDR)
-
             self.active = True
-            self.messages = []
 
-            self.idle_limit = 3
             self.lock = Lock()
+            self.messages = {}
 
             self.receive_thread = Thread(target=self.receive_messages)
             self.receive_thread.start()
@@ -28,78 +35,70 @@ class Client():
             self.chat = Thread(target=self.update_messages)
             self.chat.start()
 
-            self.name = name
-            self.send_message(name)
+            self.send_message({"name": socket.gethostname()})
+            time.sleep(0.5)
+
         except ConnectionRefusedError:
-            print("GameServer is not runing!!")
             self.active = False
 
     def receive_messages(self):
 
         while True:
             try:
-                msg = self.client_socket.recv(self.BUFSIZ).decode("utf-8")
+                msg = self.client_socket.recv(self.BUFSIZ)
+                msg = json.loads(msg.decode("utf-8"))
+                print(msg)
 
-                if msg == "END": break
+                if "server_response" in msg and msg["server_response"] == "END":
+                    self.active = False
+                    self.client_socket.close()
+                    print("Socket closed")
+                    break
+
                 # make sure memory is safe to access
-                self.lock.acquire()
-                self.messages.append(msg)
-                self.lock.release()
+                keys = list(msg)
+                for k in keys:
+                    self.lock.acquire()
+                    self.messages[k] = msg[k]
+                    self.lock.release()
 
             except Exception as e:
                 print("receive [EXCPETION]", e)
                 break
 
-    def send_message(self, msg):
+    def send_message(self, msg, reconnect=True):
 
         try:
-            self.client_socket.send(msg.encode("utf-8"))
-            if msg == "{quit}":
-                self.receive_thread.join()
-                self.client_socket.close()
-                self.active = False
-                print("Client " + self.name + " socket closed")
+            msg_bytes = json.dumps(msg).encode('utf-8')
+            self.client_socket.sendall(msg_bytes)
         except Exception as e:
-            if msg != "{quit}": print("[Not sent message]: " + msg)
+            if reconnect:
+                self.client_connect()
+                return self.send_message(msg, False)
+            else:
+                return False
 
     def get_messages(self):
 
-        messages_copy = self.messages[:]
+        if not self.active: return None
 
         # make sure memory is safe to access
         self.lock.acquire()
-        self.messages = []
+        messages_copy = copy.deepcopy(self.messages)
         self.lock.release()
 
         return messages_copy
 
     def update_messages(self):
 
-        # messages = []
+        self.log_messages = {}
         run = True
-        start_time = -1
 
         while run:
-
-            time.sleep(0.01)
+            time.sleep(0.1)
             new_messages = self.get_messages()
-            if new_messages == []:
-                if start_time == -1:
-                    start_time = time.monotonic()
-                    continue
-                else:
-                    check_time = time.monotonic()
-                    if round(check_time-start_time, 2) >= self.idle_limit:
-                        run = False
-            else:
-                start_time = -1
-                # messages.extend(new_messages)
-                for msg in new_messages:
-                    print(msg)
-
-        if self.active: print("Idling!! Closing automatically!!")
-        print("Thread closed")
-        self.disconnect()
+            if new_messages == None: break
+            else: self.log_messages = new_messages.copy()
 
     def disconnect(self):
-        self.send_message("{quit}")
+        self.send_message({"request": "{quit}"}, False)
